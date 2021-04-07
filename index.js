@@ -2,9 +2,25 @@ const express = require('express');
 const compression = require('compression');
 const app = express();
 const sequelize = require('./conexionBase');
+const jwt = require('jsonwebtoken');
+const signature = 'ju4n3s'
 app.use(express.json());
 
 app.use(compression());
+
+
+
+function getToken(data){
+    const resp = jwt.sign(data, signature);
+    return resp;
+}
+
+function isAdmin(req,res,next){
+    const {usuario} = req.body 
+    console.log(usuario + '   SOY DE isAdmin');
+    next();
+}
+
 
 function validarNuevoContacto(req, res, next) {
     const {
@@ -31,7 +47,7 @@ async function traerUsuarios() {
     return res;
 }
 
-async function validarSiExiste(req, res, next) {
+async function validarSiExiste(req, res, next){
     const usuarios = await traerUsuarios();
     const {email} = req.body;
 
@@ -56,18 +72,25 @@ async function validarLogin(req, res, next) {
     const i = usuarios.findIndex(c => {
         return c.usuario == usuario; 
     })
-    const e = usuarios.findIndex(c =>{
+    /*const e = usuarios.findIndex(c =>{
         return c.password == password;
-    })
+    })*/
     //console.log(i)
-    if (i == -1) {
-        if( e == -1){
-            return res.status(409)
-                .send({
-                    status: 'Error',
-                    mensaje: 'el contacto no existe'
-                })
+    if( i > -1){
+        const e = usuarios[i];
+        if(e.password == password){
+            next();
         }
+        else{
+            return res.status(409)
+            .send({
+                status: 'Error',
+                mensaje: 'el contacto no existe o los datos son incorrectos'
+            });
+        }
+    }
+    //console.log(usuarios)
+    if (i == -1) {
         return res.status(409)
             .send({
                 status: 'Error',
@@ -77,25 +100,25 @@ async function validarLogin(req, res, next) {
     return next();
 }
 
-app.post('/login',validarLogin,(req,res)=>{
+app.post('/login',validarLogin, isAdmin, (req,res)=>{
     const usuario = req.body;
     console.log(usuario);
-
     res.status(200).json({
         status:"Ok",
-        mensaje: 'Sesion iniciada' 
+        mensaje: 'Sesion iniciada',
+        token: getToken(usuario)
     })
     
 })
 
 app.post('/registro', validarNuevoContacto, validarSiExiste, (req, res) => {
     let usuario = Object.values(req.body);
-    usuario.unshift('NULL')
+    usuario.unshift('NULL');
     console.log(usuario)
     sequelize.query('INSERT INTO usuarios VALUES (?,?,?,?,?,?,?)', {
         replacements: usuario
     }).then(respuesta => {
-        console.log(respuesta)
+        console.log(respuesta);
     })
     res.status(201).json({
         status: "OK",
