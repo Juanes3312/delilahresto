@@ -93,7 +93,9 @@ async function validarLogin(req, res, next) {
 
 function isAdmin(req,res,next){
     const token = req.headers['access_token']
-    const {usuario,password} = req.body 
+    const usuario = "admin"//cambiar mas adelante
+    const password = "1234" // cambiar a traer de la base mas adelante
+
     console.log(usuario +' '+password); //este es admin
     const decoded = jwt.verify(token, signature);
     console.log(decoded);
@@ -102,17 +104,30 @@ function isAdmin(req,res,next){
     }else{
         res.status(401).json({
             auth:false,
-            message: 'no permisos'
+            message: 'no tienes permisos para esta accion'
         })
     }
 }
 
 function setProducts(req,res,next){
-    const {n} = req.body;
+    const {name,foto,descripcion,precio} = req.body;
+    sequelize.query(
+        "INSERT INTO productos (item,rutaFoto,descripcion,precio) VALUES (?,?,?,?)",
+        {
+            replacements:[name,foto,descripcion,precio],
+            type: sequelize.QueryTypes.INSERT
+        }
+    )
+    .then(()=>{
+        next();
+    });
 }
 
-app.get('/productos',(req,res)=>{
-    
+app.post('/productos',isAdmin,setProducts,(req,res)=>{
+    res.status(201).json({
+        status:'Ok',
+        message:'Producto insertado en la base de datos'
+    })
 })
 
 
