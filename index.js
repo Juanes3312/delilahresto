@@ -15,12 +15,6 @@ function getToken(data){
     return resp;
 }
 
-function isAdmin(req,res,next){
-    const {usuario} = req.body 
-    console.log(usuario + '   SOY DE isAdmin');
-    next();
-}
-
 
 function validarNuevoContacto(req, res, next) {
     const {
@@ -47,6 +41,7 @@ async function traerUsuarios() {
     return res;
 }
 
+
 async function validarSiExiste(req, res, next){
     const usuarios = await traerUsuarios();
     const {email} = req.body;
@@ -72,10 +67,6 @@ async function validarLogin(req, res, next) {
     const i = usuarios.findIndex(c => {
         return c.usuario == usuario; 
     })
-    /*const e = usuarios.findIndex(c =>{
-        return c.password == password;
-    })*/
-    //console.log(i)
     if( i > -1){
         const e = usuarios[i];
         if(e.password == password){
@@ -100,7 +91,44 @@ async function validarLogin(req, res, next) {
     return next();
 }
 
-app.post('/login',validarLogin, isAdmin, (req,res)=>{
+function isAdmin(req,res,next){
+    const token = req.headers['access_token']
+    const {usuario,password} = req.body 
+    console.log(usuario +' '+password); //este es admin
+    const decoded = jwt.verify(token, signature);
+    console.log(decoded);
+    if(decoded.usuario == usuario && decoded.password == password){
+        return next();
+    }else{
+        res.status(401).json({
+            auth:false,
+            message: 'no permisos'
+        })
+    }
+}
+
+function setProducts(req,res,next){
+    const {n} = req.body;
+}
+
+app.get('/productos',(req,res)=>{
+    
+})
+
+
+
+app.get('/usuarios', isAdmin, (req,res) =>{
+    res.status(200).json({
+        status:'Ok',
+        message:'Devolucion de usuarios'
+    })
+})
+
+app.post('/productos', (req,res) => {
+    
+})
+
+app.post('/login',validarLogin, (req,res)=>{
     const usuario = req.body;
     console.log(usuario);
     res.status(200).json({
