@@ -42,12 +42,14 @@ async function traerUsuarios() {
 }
 
 
+
+
 async function validarSiExiste(req, res, next){
     const usuarios = await traerUsuarios();
     const {email} = req.body;
 
     const i = usuarios.findIndex(c => {
-        return c.email == email; 
+        return c.email == email; ``
     })
     //console.log(i)
     if (i >= 0) {
@@ -123,6 +125,66 @@ function setProducts(req,res,next){
     });
 }
 
+function validartoken(req,res,next){
+    try {
+        const token = req.headers.access_token;
+        console.log(token);
+        const validData = jwt.verify(token, signature);
+        console.log(validData);
+        if (validData) {
+          req.userData = validData.userData;
+          next();
+        }
+      } catch (err) {
+        res.status(401).json("Error al validar usuario. Prueba un token válido.");
+      }
+}
+
+async function traidaProducto(a){
+    const res = await sequelize.query('SELECT * FROM productos WHERE productos.id = ?',{replacements:[a],type: sequelize.QueryTypes.SELECT});
+    return res;
+   
+}
+
+app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
+    const a = req.params.id;
+    const producto = await traidaProducto(a);
+    const {name,foto,descripcion,precio} = req.body;
+    console.log(producto);
+    
+    res.status(200).json({
+        "mensaje": "bueno"
+    });
+});
+
+
+
+app.get("/productos", validartoken, (req, res) => {
+    sequelize
+      .query("SELECT * FROM productos", {
+        type: sequelize.QueryTypes.SELECT
+      })
+      .then(results => {
+        res.json(results);
+      });
+  });
+
+app.get('/usuario/:id', validartoken, isAdmin,(req,res)=>{
+    let id_user = req.params.id;
+  sequelize
+    .query("SELECT * FROM usuarios WHERE.id = ?", {
+      replacements: [id_user],
+      type: sequelize.QueryTypes.SELECT
+    })
+    .then((result) => {
+      if(result[0]){
+        res.json(result[0]);
+      }else{
+        res.json("No se ha encontrado el usuario.")
+      }
+    });
+})
+
 app.post('/productos',isAdmin,setProducts,(req,res)=>{
     res.status(201).json({
         status:'Ok',
@@ -131,17 +193,38 @@ app.post('/productos',isAdmin,setProducts,(req,res)=>{
 })
 
 
+app.get('/usuarios',validartoken, isAdmin, (req,res) =>{
+    sequelize
+    .query("SELECT * FROM usuarios", {
+      type: sequelize.QueryTypes.SELECT
+    })
+    .then(results => {
+        res.status(200).json(results)
+    });
+})
 
-app.get('/usuarios', isAdmin, (req,res) =>{
-    res.status(200).json({
-        status:'Ok',
-        message:'Devolucion de usuarios'
+
+
+app.get("/users/:id", validartoken, isAdmin,(req,res) =>{
+    let id = req.params.id;
+    sequelize.query (
+        "SELECT * FROM  usuarios WHERE usuarios.id = ?",{
+            replacements : id,
+            type: sequelize.QueryTypes.SELECT
+        }
+    ).then((resultado)=>{
+        if(resultado[0]){
+            res.status(200).json(resultado[0]);
+        }else{
+            res.json({
+                status:'fallido',
+                mensaje:'no se pudo encontrar el usuario'
+            })   
+                 
+        }
     })
 })
 
-app.post('/productos', (req,res) => {
-    
-})
 
 app.post('/login',validarLogin, (req,res)=>{
     const usuario = req.body;
