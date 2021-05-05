@@ -150,11 +150,30 @@ app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
     const a = req.params.id;
     const producto = await traidaProducto(a);
     const {name,foto,descripcion,precio} = req.body;
-    console.log(producto);
-    
-    res.status(200).json({
-        "mensaje": "bueno"
-    });
+    //console.log(producto[0], 'soy producto')
+    if(producto[0]){
+        sequelize.query("UPDATE `productos` SET `item` = ?, `rutaFoto` = ?, `descripcion` = ?, `precio` = ? WHERE `productos`.`id` = ?",
+            {
+                replacements:[
+                    name,
+                    foto,
+                    descripcion,
+                    precio,
+                    req.params.id
+                ],
+                type: sequelize.QueryTypes.UPDATE
+            }
+        )
+        .then(()=>{
+            res.status(200).json({
+                "mensaje": "el producto ha sido modificado con exito"
+            })
+        })
+    }else{
+        res.status(400).json({
+            "mensaje":"No existe un producto con ese id"
+        });
+    }
 });
 
 
