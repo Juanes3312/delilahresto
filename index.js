@@ -143,8 +143,33 @@ function validartoken(req,res,next){
 async function traidaProducto(a){
     const res = await sequelize.query('SELECT * FROM productos WHERE productos.id = ?',{replacements:[a],type: sequelize.QueryTypes.SELECT});
     return res;
-   
 }
+
+app.post('/pedido', validartoken, async function a(req,res){
+    const {id_usuario, id_productos} =req.body
+    await sequelize.query('INSERT INTO orders(id_usuario, id_estados) VALUES (?, 1 )',
+    {
+        replacements:[id_usuario],
+        type: sequelize.QueryTypes.INSERT
+    })
+    const pedidos  = await sequelize.query('SELECT * FROM orders',{type: sequelize.QueryTypes.SELECT});
+    console.log(pedidos[pedidos.length-1],'hola soy numPedido');
+    let idUltimoPedido = pedidos[pedidos.length-1.].id;
+    console.log(id_productos);
+    for(i=0; i<id_productos.length; i++){
+        sequelize.query('INSERT INTO ordenes_producto(id_pedido, id_producto) VALUE (?,?)',
+            {
+                replacements: [idUltimoPedido, id_productos[i]],
+                type: sequelize.QueryTypes.INSERT
+            }   
+        )
+    }
+    res.status(200).json({
+        "mensaje" : 'pedido creado con exito'
+    })
+})
+
+
 
 app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
     const a = req.params.id;
