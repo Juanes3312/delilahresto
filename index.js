@@ -104,7 +104,7 @@ function isAdmin(req,res,next){
     if(decoded.usuario == usuario && decoded.password == password){
         return next();
     }else{
-        res.status(401).json({
+        res.status(403).json({
             auth:false,
             message: 'no tienes permisos para esta accion'
         })
@@ -145,6 +145,38 @@ async function traidaProducto(a){
     return res;
 }
 
+async function traidaPedido(a){
+    const res = await sequelize.query('SELECT * FROM orders WHERE orders.id = ?',{replacements:[a],type: sequelize.QueryTypes.SELECT});
+    return res;
+}
+
+app.delete('/productos/:id', validartoken, isAdmin, async function i(req,res){
+    const id = req.params.id;
+    const verificacion = await traidaProducto(id);
+    if(verificacion.length > 0){
+        sequelize.query('DELETE FROM `productos` WHERE `id` = ?',
+        {
+            replacements: [id],
+            type: sequelize.QueryTypes.DELETE
+        })
+        .then(()=>{
+            res.status(200).json({
+                "mensaje":"producto eliminado con exito"
+            })
+        })
+        .catch(()=>{
+            res.status(400).json({
+                "mensaje": "ha ocurrido un error con la peticion"
+            })
+        })
+    }else{
+        res.status(404).json({
+            'mensaje':"Producto no encontrado en la base de datos"
+        })
+    }
+})
+
+
 app.post('/pedido', validartoken, async function a(req,res){
     const {id_usuario, id_productos} =req.body
     await sequelize.query('INSERT INTO orders(id_usuario, id_estados) VALUES (?, 1 )',
@@ -164,12 +196,57 @@ app.post('/pedido', validartoken, async function a(req,res){
             }   
         )
     }
-    res.status(200).json({
+    res.status(201).json({
         "mensaje" : 'pedido creado con exito'
     })
 })
 
+app.put('/pedido/:id', validartoken,isAdmin, async function a(req,res){
+    const id_pedido = req.params.id
+    const {id_new_productos} =req.body
+    console.log(id_pedido);
+    await sequelize.query('DELETE FROM `ordenes_producto` WHERE `id_pedido` = ?',
+    {
+        replacements:[id_pedido],
+        type: sequelize.QueryTypes.DELETE
+    })
+    for(i=0; i<id_new_productos.length; i++){
+        sequelize.query('INSERT INTO ordenes_producto(id_pedido, id_producto) VALUE (?,?)',
+            {
+                replacements: [id_pedido, id_new_productos[i]],
+                type: sequelize.QueryTypes.INSERT
+            }   
+        )
+    }
+    res.status(200).json({
+        "mensaje" : 'productos del id actualizados con exito'
+    })
+})
 
+app.put('/pedidoestado/:id', validartoken, isAdmin, async function i(req,res){
+    const id_pedido = req.params.id;
+    const pedido = await traidaPedido(id_pedido);
+    const {id_nuevo_estado} = req.body;
+    console.log(pedido)
+    if(pedido[0]){
+        sequelize.query("UPDATE `orders` SET `id_estados` = ? WHERE `orders`.`id` = ?",{
+            replacements:[
+                id_nuevo_estado,
+                id_pedido
+                ],
+                type: sequelize.QueryTypes.UPDATE
+        }).then(()=>{
+            res.status(200).json({
+                "mensaje": "el estado del pedido se ha modificado con exito"
+            })
+        })
+    }else{
+        res.status(400).json({
+            "mensaje":"No existe un pedido con ese id"
+        })
+    }
+    
+})
 
 app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
     const a = req.params.id;
@@ -200,7 +277,6 @@ app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
         });
     }
 });
-
 
 
 app.get("/productos", validartoken, (req, res) => {
