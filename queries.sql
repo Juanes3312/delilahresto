@@ -1,4 +1,5 @@
 /* crear tablas*/
+CREAT TABLE `delilah_resto`. `usuarios` (`id` int NOR NULL AUTO_INCREMENT, `usuario`)
 
 CREATE TABLE `delilah_resto`.`productos` ( `id` INT NOT NULL AUTO_INCREMENT , `item` VARCHAR(60) NOT NULL , `rutaFoto` VARCHAR(255) NULL DEFAULT 'https://748073e22e8db794416a-cc51ef6b37841580002827d4d94d19b6.ssl.cf3.rackcdn.com/not-found.png ' , `descripcion` TEXT NOT NULL , `precio` INT NOT NULL, PRIMARY KEY (`id`));
 

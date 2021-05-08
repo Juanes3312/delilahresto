@@ -6,26 +6,65 @@ const jwt = require('jsonwebtoken');
 const signature = 'ju4n3s'
 app.use(express.json());
 
-app.use(compression());
 
+/*app.use(compression());
+const swaggerUi = require('swagger-ui-express');
+const swagger = require('./swagger')
+//import * as specs from './swagger';
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs.default));*/
 
-
+// esta es la funcion donde podemos generar el token al usuario
 function getToken(data){
     const resp = jwt.sign(data, signature);
     return resp;
 }
 
+// esta funcion es la que determina si un usuario es admin o no
+function isAdmin(req,res,next){
+    const token = req.headers['access_token']
+    const usuario = "admin"
+    const password = "1234" 
+    console.log(usuario +' '+password); //este es admin
+    const decoded = jwt.verify(token, signature);
+    console.log(decoded);
+    if(decoded.usuario == usuario && decoded.password == password){
+        return next();
+    }else{
+        res.status(403).json({
+            auth:false,
+            message: 'no tienes permisos para esta accion'
+        })
+    }
+}
 
+//esta funcion determina si un token ingresado es valido o no
+function validartoken(req,res,next){
+    try {
+        const token = req.headers.access_token;
+        console.log(token);
+        const validData = jwt.verify(token, signature);
+        console.log(validData);
+        if (validData) {
+          req.userData = validData.userData;
+          next();
+        }
+      } catch (err) {
+        res.status(401).json("Error al validar usuario. Prueba un token válido.");
+      }
+}
+
+//aca vamos a encontrar las apis y las funciones de USUARIOS
 function validarNuevoContacto(req, res, next) {
     const {
         usuario,
-        nombreYapellido,
+        nombre,
+        apellido,
         email,
         telefono,
         direccion,
         password
     } = req.body;
-    if (!usuario || !nombreYapellido || !email || !telefono || !direccion || !password) {
+    if (!usuario ||!nombre|| !apellido || !email || !telefono || !direccion || !password) {
         return res.status(400)
             .send({
                 status: 'Error',
@@ -34,15 +73,13 @@ function validarNuevoContacto(req, res, next) {
     }
     return next();
 }
+
 async function traerUsuarios() {
     const res = await sequelize.query('SELECT * FROM usuarios', {
         type: sequelize.QueryTypes.SELECT
     })
     return res;
 }
-
-
-
 
 async function validarSiExiste(req, res, next){
     const usuarios = await traerUsuarios();
@@ -93,23 +130,80 @@ async function validarLogin(req, res, next) {
     return next();
 }
 
-function isAdmin(req,res,next){
-    const token = req.headers['access_token']
-    const usuario = "admin"//cambiar mas adelante
-    const password = "1234" // cambiar a traer de la base mas adelante
+app.get('/usuarios/:id', validartoken, isAdmin,(req,res)=>{
+    let id_user = req.params.id;
+  sequelize
+    .query("SELECT * FROM usuarios WHERE.id = ?", {
+      replacements: [id_user],
+      type: sequelize.QueryTypes.SELECT
+    })
+    .then((result) => {
+      if(result[0]){
+        res.json(result[0]);
+      }else{
+        res.json("No se ha encontrado el usuario.")
+      }
+    });
+})
 
-    console.log(usuario +' '+password); //este es admin
-    const decoded = jwt.verify(token, signature);
-    console.log(decoded);
-    if(decoded.usuario == usuario && decoded.password == password){
-        return next();
-    }else{
-        res.status(403).json({
-            auth:false,
-            message: 'no tienes permisos para esta accion'
-        })
-    }
-}
+app.get('/usuarios',validartoken, isAdmin, (req,res) =>{
+    sequelize
+    .query("SELECT * FROM usuarios", {
+      type: sequelize.QueryTypes.SELECT
+    })
+    .then(results => {
+        res.status(200).json(results)
+    });
+})
+
+app.get("/users/:id", validartoken, isAdmin,(req,res) =>{
+    let id = req.params.id;
+    sequelize.query (
+        "SELECT * FROM  usuarios WHERE usuarios.id = ?",{
+            replacements : id,
+            type: sequelize.QueryTypes.SELECT
+        }
+    ).then((resultado)=>{
+        if(resultado[0]){
+            res.status(200).json(resultado[0]);
+        }else{
+            res.json({
+                status:'fallido',
+                mensaje:'no se pudo encontrar el usuario'
+            })   
+                 
+        }
+    })
+})
+
+app.post('/login',validarLogin, (req,res)=>{
+    const usuario = req.body;
+    console.log(usuario);
+    res.status(200).json({
+        status:"Ok",
+        mensaje: 'Sesion iniciada',
+        token: getToken(usuario)
+    })
+    
+})
+
+app.post('/registro', validarNuevoContacto, validarSiExiste, (req, res) => {
+    let usuario = Object.values(req.body);
+    usuario.unshift('NULL');
+    sequelize.query('INSERT INTO usuarios VALUES (?,?,?,?,?,?,?,?)', {
+        replacements: usuario
+    }).then(respuesta => {
+        console.log(respuesta);
+    })
+    res.status(201).json({
+        status: "OK",
+        mensaje: "Contacto Agregado"
+    })
+});
+
+
+
+// en esta seccion se va a encontrar todas las funciones de productos
 
 function setProducts(req,res,next){
     const {name,foto,descripcion,precio} = req.body;
@@ -123,21 +217,6 @@ function setProducts(req,res,next){
     .then(()=>{
         next();
     });
-}
-
-function validartoken(req,res,next){
-    try {
-        const token = req.headers.access_token;
-        console.log(token);
-        const validData = jwt.verify(token, signature);
-        console.log(validData);
-        if (validData) {
-          req.userData = validData.userData;
-          next();
-        }
-      } catch (err) {
-        res.status(401).json("Error al validar usuario. Prueba un token válido.");
-      }
 }
 
 async function traidaProducto(a){
@@ -176,6 +255,85 @@ app.delete('/productos/:id', validartoken, isAdmin, async function i(req,res){
     }
 })
 
+app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
+    const a = req.params.id;
+    const producto = await traidaProducto(a);
+    const {name,foto,descripcion,precio} = req.body;
+    if(producto[0]){
+        sequelize.query("UPDATE `productos` SET `item` = ?, `rutaFoto` = ?, `descripcion` = ?, `precio` = ? WHERE `productos`.`id` = ?",
+            {
+                replacements:[
+                    name,
+                    foto,
+                    descripcion,
+                    precio,
+                    req.params.id
+                ],
+                type: sequelize.QueryTypes.UPDATE
+            }
+        )
+        .then(()=>{
+            res.status(200).json({
+                "mensaje": "el producto ha sido modificado con exito"
+            })
+        })
+    }else{
+        res.status(400).json({
+            "mensaje":"No existe un producto con ese id"
+        });
+    }
+});
+
+app.get("/producto", validartoken, (req, res) => {
+    sequelize
+      .query("SELECT * FROM productos", {
+        type: sequelize.QueryTypes.SELECT
+      })
+      .then(results => {
+        res.json(results);
+      });
+});
+
+app.post('/productos',isAdmin,setProducts,(req,res)=>{
+    res.status(201).json({
+        status:'Ok',
+        message:'Producto insertado en la base de datos'
+    })
+})
+
+
+//en esta seccion se encontrara todo lo relacionado a pedidos
+app.delete('/pedido/:id', validartoken, isAdmin, async function o(req,res){
+    const id = req.params.id;
+    const verificacion = await traidaPedido(id);
+    if(verificacion.length > 0 ){
+        sequelize.query('DELETE FROM `orders` WHERE `id` = ?',
+        {
+            replacements: [id],
+            type: sequelize.QueryTypes.DELETE
+        })
+        sequelize.query('DELETE FROM `ordenes_producto` WHERE `id_pedido` = ?',
+        {
+            replacements: [id],
+            type: sequelize.QueryTypes.DELETE
+        })
+        .then(()=>{
+            res.status(200).json({
+                "mensaje":"pedido eliminado con exito"
+            })
+        })
+        .catch(()=>{
+            res.status(400).json({
+                "mensaje": "ha ocurrido un error con la peticion"
+            })
+        })
+    }else{
+        res.status(404).json({
+            'mensaje':"pedido no encontrado en la base de datos"
+        })
+    }     
+    
+})
 
 app.post('/pedido', validartoken, async function a(req,res){
     const {id_usuario, id_productos} =req.body
@@ -204,7 +362,6 @@ app.post('/pedido', validartoken, async function a(req,res){
 app.put('/pedido/:id', validartoken,isAdmin, async function a(req,res){
     const id_pedido = req.params.id
     const {id_new_productos} =req.body
-    console.log(id_pedido);
     await sequelize.query('DELETE FROM `ordenes_producto` WHERE `id_pedido` = ?',
     {
         replacements:[id_pedido],
@@ -223,11 +380,10 @@ app.put('/pedido/:id', validartoken,isAdmin, async function a(req,res){
     })
 })
 
-app.put('/pedidoestado/:id', validartoken, isAdmin, async function i(req,res){
+app.put('/pedido/estado/:id', validartoken, isAdmin, async function i(req,res){
     const id_pedido = req.params.id;
     const pedido = await traidaPedido(id_pedido);
     const {id_nuevo_estado} = req.body;
-    console.log(pedido)
     if(pedido[0]){
         sequelize.query("UPDATE `orders` SET `id_estados` = ? WHERE `orders`.`id` = ?",{
             replacements:[
@@ -248,129 +404,9 @@ app.put('/pedidoestado/:id', validartoken, isAdmin, async function i(req,res){
     
 })
 
-app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
-    const a = req.params.id;
-    const producto = await traidaProducto(a);
-    const {name,foto,descripcion,precio} = req.body;
-    //console.log(producto[0], 'soy producto')
-    if(producto[0]){
-        sequelize.query("UPDATE `productos` SET `item` = ?, `rutaFoto` = ?, `descripcion` = ?, `precio` = ? WHERE `productos`.`id` = ?",
-            {
-                replacements:[
-                    name,
-                    foto,
-                    descripcion,
-                    precio,
-                    req.params.id
-                ],
-                type: sequelize.QueryTypes.UPDATE
-            }
-        )
-        .then(()=>{
-            res.status(200).json({
-                "mensaje": "el producto ha sido modificado con exito"
-            })
-        })
-    }else{
-        res.status(400).json({
-            "mensaje":"No existe un producto con ese id"
-        });
-    }
-});
-
-
-app.get("/productos", validartoken, (req, res) => {
-    sequelize
-      .query("SELECT * FROM productos", {
-        type: sequelize.QueryTypes.SELECT
-      })
-      .then(results => {
-        res.json(results);
-      });
-  });
-
-app.get('/usuario/:id', validartoken, isAdmin,(req,res)=>{
-    let id_user = req.params.id;
-  sequelize
-    .query("SELECT * FROM usuarios WHERE.id = ?", {
-      replacements: [id_user],
-      type: sequelize.QueryTypes.SELECT
-    })
-    .then((result) => {
-      if(result[0]){
-        res.json(result[0]);
-      }else{
-        res.json("No se ha encontrado el usuario.")
-      }
-    });
-})
-
-app.post('/productos',isAdmin,setProducts,(req,res)=>{
-    res.status(201).json({
-        status:'Ok',
-        message:'Producto insertado en la base de datos'
-    })
-})
-
-
-app.get('/usuarios',validartoken, isAdmin, (req,res) =>{
-    sequelize
-    .query("SELECT * FROM usuarios", {
-      type: sequelize.QueryTypes.SELECT
-    })
-    .then(results => {
-        res.status(200).json(results)
-    });
-})
-
-
-
-app.get("/users/:id", validartoken, isAdmin,(req,res) =>{
-    let id = req.params.id;
-    sequelize.query (
-        "SELECT * FROM  usuarios WHERE usuarios.id = ?",{
-            replacements : id,
-            type: sequelize.QueryTypes.SELECT
-        }
-    ).then((resultado)=>{
-        if(resultado[0]){
-            res.status(200).json(resultado[0]);
-        }else{
-            res.json({
-                status:'fallido',
-                mensaje:'no se pudo encontrar el usuario'
-            })   
-                 
-        }
-    })
-})
-
-
-app.post('/login',validarLogin, (req,res)=>{
-    const usuario = req.body;
-    console.log(usuario);
-    res.status(200).json({
-        status:"Ok",
-        mensaje: 'Sesion iniciada',
-        token: getToken(usuario)
-    })
-    
-})
-
-app.post('/registro', validarNuevoContacto, validarSiExiste, (req, res) => {
-    let usuario = Object.values(req.body);
-    usuario.unshift('NULL');
-    console.log(usuario)
-    sequelize.query('INSERT INTO usuarios VALUES (?,?,?,?,?,?,?)', {
-        replacements: usuario
-    }).then(respuesta => {
-        console.log(respuesta);
-    })
-    res.status(201).json({
-        status: "OK",
-        mensaje: "Contacto Agregado"
-    })
-});
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger.json');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.listen(4000, function () {
     console.log('El server corre en el puerto 4000')
