@@ -5,13 +5,8 @@ const sequelize = require('./conexionBase');
 const jwt = require('jsonwebtoken');
 const signature = 'ju4n3s'
 app.use(express.json());
+app.use(compression());
 
-
-/*app.use(compression());
-const swaggerUi = require('swagger-ui-express');
-const swagger = require('./swagger')
-//import * as specs from './swagger';
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs.default));*/
 
 // esta es la funcion donde podemos generar el token al usuario
 function getToken(data){
@@ -130,62 +125,7 @@ async function validarLogin(req, res, next) {
     return next();
 }
 
-app.get('/usuarios/:id', validartoken, isAdmin,(req,res)=>{
-    let id_user = req.params.id;
-  sequelize
-    .query("SELECT * FROM usuarios WHERE.id = ?", {
-      replacements: [id_user],
-      type: sequelize.QueryTypes.SELECT
-    })
-    .then((result) => {
-      if(result[0]){
-        res.json(result[0]);
-      }else{
-        res.json("No se ha encontrado el usuario.")
-      }
-    });
-})
 
-app.get('/usuarios',validartoken, isAdmin, (req,res) =>{
-    sequelize
-    .query("SELECT * FROM usuarios", {
-      type: sequelize.QueryTypes.SELECT
-    })
-    .then(results => {
-        res.status(200).json(results)
-    });
-})
-
-app.get("/users/:id", validartoken, isAdmin,(req,res) =>{
-    let id = req.params.id;
-    sequelize.query (
-        "SELECT * FROM  usuarios WHERE usuarios.id = ?",{
-            replacements : id,
-            type: sequelize.QueryTypes.SELECT
-        }
-    ).then((resultado)=>{
-        if(resultado[0]){
-            res.status(200).json(resultado[0]);
-        }else{
-            res.json({
-                status:'fallido',
-                mensaje:'no se pudo encontrar el usuario'
-            })   
-                 
-        }
-    })
-})
-
-app.post('/login',validarLogin, (req,res)=>{
-    const usuario = req.body;
-    console.log(usuario);
-    res.status(200).json({
-        status:"Ok",
-        mensaje: 'Sesion iniciada',
-        token: getToken(usuario)
-    })
-    
-})
 
 app.post('/registro', validarNuevoContacto, validarSiExiste, (req, res) => {
     let usuario = Object.values(req.body);
@@ -200,6 +140,48 @@ app.post('/registro', validarNuevoContacto, validarSiExiste, (req, res) => {
         mensaje: "Contacto Agregado"
     })
 });
+
+app.post('/login',validarLogin, (req,res)=>{
+    const usuario = req.body;
+    console.log(usuario);
+    res.status(200).json({
+        status:"Ok",
+        mensaje: 'Sesion iniciada',
+        token: getToken(usuario)
+    })
+    
+})
+
+app.get('/usuarios',validartoken, isAdmin, (req,res) =>{
+    sequelize
+    .query("SELECT * FROM usuarios", {
+      type: sequelize.QueryTypes.SELECT
+    })
+    .then(results => {
+        res.status(200).json(results)
+    });
+})
+
+app.get("/usuario/:id", validartoken, isAdmin,(req,res) =>{
+    let id = req.params.id;
+    sequelize.query (
+        "SELECT * FROM  `usuarios` WHERE `id` = ?",{
+            replacements : [id],
+            type: sequelize.QueryTypes.SELECT
+        }
+    ).then((resultado)=>{
+        if(resultado[0]){
+            res.status(200).json(resultado[0]);
+        }else{
+            res.status(404).json({
+                status:'fallido',
+                mensaje:'no se pudo encontrar el usuario'
+            })   
+                 
+        }
+    })
+})
+
 
 
 
@@ -274,6 +256,7 @@ app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
         )
         .then(()=>{
             res.status(200).json({
+                "status" : "ok",
                 "mensaje": "el producto ha sido modificado con exito"
             })
         })
@@ -284,7 +267,7 @@ app.put('/productos/:id', validartoken, isAdmin, async function e(req, res){
     }
 });
 
-app.get("/producto", validartoken, (req, res) => {
+app.get("/productos", validartoken, (req, res) => {
     sequelize
       .query("SELECT * FROM productos", {
         type: sequelize.QueryTypes.SELECT
@@ -294,7 +277,7 @@ app.get("/producto", validartoken, (req, res) => {
       });
 });
 
-app.post('/productos',isAdmin,setProducts,(req,res)=>{
+app.post('/productos',isAdmin, setProducts,(req,res)=>{
     res.status(201).json({
         status:'Ok',
         message:'Producto insertado en la base de datos'
@@ -355,6 +338,7 @@ app.post('/pedido', validartoken, async function a(req,res){
         )
     }
     res.status(201).json({
+        "status" : "ok",
         "mensaje" : 'pedido creado con exito'
     })
 })
@@ -404,9 +388,6 @@ app.put('/pedido/estado/:id', validartoken, isAdmin, async function i(req,res){
     
 })
 
-const swaggerUi = require('swagger-ui-express');
-const swaggerDocument = require('./swagger.json');
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.listen(4000, function () {
     console.log('El server corre en el puerto 4000')
