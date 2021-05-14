@@ -1,4 +1,16 @@
-Para inicializar la base de datos se debe lanzar el archivo de index
+Para iniciar la DB:
+1. se debe inicar un servidor apache y PhpMyAdmin corriendo en (XAMPP) con una estructura llamada delilah_resto,
+el usuario de la db tiene que ser sin password
+2.copiar las queries del archivo queries.sql y correrlas en la consola SQL. esto creara las tablas y creara algunos registros dentro de la base
+
+para inicializar el servidor  se debe :
+1. git clone https://github.com/Juanes3312/delilahresto.git
+
+2. npm install
+
+3. nodemon index || node index
+
+para probar las apis se debe tener postman y seguir la documentacion de swagger 
 
 Condición 1: Poder registrar un nuevo usuario.
 
