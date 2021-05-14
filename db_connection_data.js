@@ -2,7 +2,7 @@ const   conf_db_host = 'localhost',
 conf_db_name   = 'delilah_resto', 
 conf_user     = 'root',       
     conf_password = '',          
-    conf_port     = '3306';       e
+    conf_port     = '3306';       
 module.exports = {
     conf_db_host : conf_db_host,
     conf_db_name   : conf_db_name,
