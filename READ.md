@@ -1,6 +1,5 @@
 Para iniciar la DB:
-1. se debe inicar un servidor apache y PhpMyAdmin corriendo en (XAMPP) con una estructura llamada delilah_resto,
-el usuario de la db tiene que ser sin password
+1. se debe inicar un servidor apache y PhpMyAdmin corriendo en (XAMPP) con una estructura llamada delilah_resto. 
 2.copiar las queries del archivo queries.sql y correrlas en la consola SQL. esto creara las tablas y creara algunos registros dentro de la base
 
 para inicializar el servidor  se debe :
